@@ -4,8 +4,12 @@ import { app, Menu, ipcMain } from "electron";
 import menu from "./menu";
 import { createMainWindow, getMainWindow } from "./window-lifecycle";
 import "./internal-lifecycle";
+import resolveUserDataDirectory from "~/helpers/resolveUserDataDirectory";
+import db from "./db";
+import debounce from "lodash/debounce";
 
 const gotLock = app.requestSingleInstanceLock();
+const userDataDirectory = resolveUserDataDirectory();
 
 if (!gotLock) {
   app.quit();
@@ -42,11 +46,67 @@ app.on("ready", async () => {
     await installExtensions();
   }
 
+  db.init(userDataDirectory);
+
+  ipcMain.handle("getKey", (event, { ns, keyPath, defaultValue }) => {
+    return db.getKey(ns, keyPath, defaultValue);
+  });
+
+  ipcMain.handle("setKey", (event, { ns, keyPath, value }) => {
+    return db.setKey(ns, keyPath, value);
+  });
+
+  ipcMain.handle("hasEncryptionKey", (event, { ns, keyPath }) => {
+    return db.hasEncryptionKey(ns, keyPath);
+  });
+
+  ipcMain.handle("setEncryptionKey", (event, { ns, keyPath, encryptionKey }) => {
+    return db.setEncryptionKey(ns, keyPath, encryptionKey);
+  });
+
+  ipcMain.handle("removeEncryptionKey", (event, { ns, keyPath }) => {
+    return db.removeEncryptionKey(ns, keyPath);
+  });
+
+  ipcMain.handle("isEncryptionKeyCorrect", (event, { ns, keyPath, encryptionKey }) => {
+    return db.isEncryptionKeyCorrect(ns, keyPath, encryptionKey);
+  });
+
+  ipcMain.handle("hasBeenDecrypted", (event, { ns, keyPath }) => {
+    return db.hasBeenDecrypted(ns, keyPath);
+  });
+
+  ipcMain.handle("resetAll", () => {
+    return db.resetAll();
+  });
+
+  ipcMain.handle("cleanCache", () => {
+    return db.cleanCache();
+  });
+
   Menu.setApplicationMenu(menu);
 
-  const w = await createMainWindow();
+  const windowParams = await db.getKey("windowParams", "MainWindow", {});
 
-  await clearSessionCache(w.webContents.session);
+  const window = await createMainWindow(windowParams);
+
+  window.on(
+    "resize",
+    debounce(() => {
+      const [width, height] = window.getSize();
+      db.setKey("windowParams", `${window.name}.dimensions`, { width, height });
+    }, 300),
+  );
+
+  window.on(
+    "move",
+    debounce(() => {
+      const [x, y] = window.getPosition();
+      db.setKey("windowParams", `${window.name}.positions`, { x, y });
+    }, 300),
+  );
+
+  await clearSessionCache(window.webContents.session);
 });
 
 ipcMain.on("ready-to-show", () => {
