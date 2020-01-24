@@ -36,6 +36,7 @@ import PerfIndicator from "~/renderer/components/PerfIndicator";
 import MainSideBar from "~/renderer/components/MainSideBar";
 import TriggerAppReady from "~/renderer/components/TriggerAppReady";
 import ContextMenuWrapper from "~/renderer/components/ContextMenu/ContextMenuWrapper";
+import DebugUpdater from "~/renderer/components/Updater/DebugUpdater";
 import ModalsLayer from "./ModalsLayer";
 
 const Main: ThemedComponent<{
@@ -46,7 +47,14 @@ const Main: ThemedComponent<{
   px: 6,
 }))`
   outline: none;
-  padding-top: ${p => p.theme.sizes.topBarHeight + p.theme.space[6]}px;
+`;
+
+const ScrollZone = styled(Box)`
+  overflow: auto;
+  &::-webkit-scrollbar {
+    width: 0px;
+    height: 0px;
+  }
 `;
 
 const reloadApp = event => {
@@ -88,8 +96,7 @@ const Default = () => {
 
             <IsNewVersion />
 
-            {/* TODO: UpdaterContext and autoUpdate command */}
-            {/* {process.env.DEBUG_UPDATE && <DebugUpdater />} */}
+            {process.env.DEBUG_UPDATE && <DebugUpdater />}
 
             <SyncContinuouslyPendingOperations priority={20} interval={SYNC_PENDING_INTERVAL} />
             <SyncBackground />
@@ -98,13 +105,12 @@ const Default = () => {
 
             <Box grow horizontal bg="palette.background.paper">
               <MainSideBar />
-              <Box
+              <ScrollZone
                 className="main-container"
                 shrink
                 grow
                 bg="palette.background.default"
                 color="palette.text.shade60"
-                overflow="visible"
                 relative
               >
                 <HSMStatusBanner />
@@ -122,7 +128,7 @@ const Default = () => {
                     <Route path="/asset/:assetId+" component={Asset} />
                   </Switch>
                 </Main>
-              </Box>
+              </ScrollZone>
             </Box>
 
             <LibcoreBusyIndicator />

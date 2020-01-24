@@ -5,6 +5,8 @@ import { distribute, isIncompleteState } from "@ledgerhq/live-common/lib/apps";
 import styled from "styled-components";
 import { Trans } from "react-i18next";
 
+import { Transition, TransitionGroup } from "react-transition-group";
+
 import ByteSize from "~/renderer/components/ByteSize";
 import { rgba } from "~/renderer/styles/helpers";
 import Text from "~/renderer/components/Text";
@@ -60,8 +62,6 @@ const Info = styled.div`
 `;
 
 const StorageBarWrapper: ThemedComponent<{}> = styled.div`
-  display: flex;
-  flex-direction: row;
   width: 100%;
   border-radius: 3px;
   height: 23px;
@@ -69,17 +69,39 @@ const StorageBarWrapper: ThemedComponent<{}> = styled.div`
   overflow: hidden;
 `;
 
-const StorageBarItem: ThemedComponent<{ ratio: number }> = styled.div.attrs(props => ({
-  style: { width: `${(props.ratio * 1e2).toFixed(3)}%` },
-}))`
+const StorageBarGraph = styled.div`
   display: flex;
-  width: 0;
+  flex-direction: row;
+  width: 100%;
+  height: 100%;
+  position: relative;
+  transform-origin: left;
+  animation: ${p => p.theme.animations.fadeInGrowX};
+`;
+
+const transitionStyles = {
+  entering: flexBasis => ({ opacity: 1, flexBasis }),
+  entered: flexBasis => ({ opacity: 1, flexBasis, minWidth: 4 }),
+  exiting: () => ({ opacity: 0, flexBasis: 0 }),
+  exited: () => ({ opacity: 0, flexBasis: 0 }),
+};
+
+const StorageBarItem: ThemedComponent<{ ratio: number }> = styled.div.attrs(props => ({
+  style: {
+    ...transitionStyles[props.state](`${(props.ratio * 1e2).toFixed(3)}%`),
+  },
+}))`
+  flex: 0 0 0;
   background-color: ${p => p.color};
   position: relative;
-  border-right: 3px solid ${p => p.theme.colors.palette.background.paper};
+  border-right: 2px solid ${p => p.theme.colors.palette.background.paper};
+  box-sizing: content-box;
   transform-origin: left;
+  opacity: 0;
   transition: all 0.4s ease-in;
-  animation: ${p => p.theme.animations.fadeInGrowX};
+  & > * {
+    width: 100%;
+  }
 `;
 
 const FreeInfo = styled.div`
@@ -88,7 +110,7 @@ const FreeInfo = styled.div`
   flex-direction: row;
   align-items: center;
   justify-content: flex-end;
-  color: ${p => (p.danger ? p.theme.colors.alertRed : p.theme.colors.palette.text.shade100)};
+  color: ${p => (p.danger ? p.theme.colors.warning : p.theme.colors.palette.text.shade100)};
 `;
 
 const TooltipContentWrapper: ThemedComponent<{}> = styled.div`
@@ -120,23 +142,38 @@ const TooltipContent = ({
   </TooltipContentWrapper>
 );
 
-export const StorageBar = ({ distribution, deviceModel }: { distribution: *, deviceModel: * }) => (
-  <StorageBarWrapper>
-    {distribution.apps.map(({ name, currency, bytes, blocks }, index) => {
-      const color = currency ? currency.color : "black";
-      return (
-        <StorageBarItem
-          key={`${name}`}
-          color={color}
-          ratio={blocks / (distribution.totalBlocks - distribution.osBlocks)}
-        >
-          <Tooltip
-            content={<TooltipContent name={name} bytes={bytes} deviceModel={deviceModel} />}
-          />
-        </StorageBarItem>
-      );
-    })}
-  </StorageBarWrapper>
+export const StorageBar = ({
+  distribution,
+  deviceModel,
+  isIncomplete,
+}: {
+  distribution: *,
+  deviceModel: *,
+  isIncomplete: boolean,
+}) => (
+  <TransitionGroup component={StorageBarWrapper}>
+    <StorageBarGraph>
+      {!isIncomplete &&
+        distribution.apps.map(({ name, currency, bytes, blocks }, index) => {
+          const color = currency ? currency.color : "black";
+          return (
+            <Transition in={true} timeout={400} mountOnEnter key={`${name}`}>
+              {state => (
+                <StorageBarItem
+                  state={state}
+                  color={color}
+                  ratio={blocks / (distribution.totalBlocks - distribution.osBlocks)}
+                >
+                  <Tooltip
+                    content={<TooltipContent name={name} bytes={bytes} deviceModel={deviceModel} />}
+                  />
+                </StorageBarItem>
+              )}
+            </Transition>
+          );
+        })}
+    </StorageBarGraph>
+  </TransitionGroup>
 );
 
 const DeviceStorage = ({ state, deviceInfo }: *) => {
@@ -153,11 +190,11 @@ const DeviceStorage = ({ state, deviceInfo }: *) => {
             <Text ff="Inter|SemiBold" color="palette.text.shade100" fontSize={5}>
               {state.deviceModel.productName}
             </Text>
-            <Tooltip content={<Trans i18nKey="manager.deviceStorage.genuine" />}>
-              <Box ml={2}>
+            <Box ml={2}>
+              <Tooltip content={<Trans i18nKey="manager.deviceStorage.genuine" />}>
                 <IconCheckFull size={18} />
-              </Box>
-            </Tooltip>
+              </Tooltip>
+            </Box>
           </Box>
           <Text ff="Inter|Regular" color="palette.text.shade40" fontSize={4}>
             <Trans
@@ -188,11 +225,15 @@ const DeviceStorage = ({ state, deviceInfo }: *) => {
                 <Trans i18nKey="manager.deviceStorage.installed" />
               </Text>
               <Text color="palette.text.shade100" ff="Inter|Bold" fontSize={4}>
-                {distribution.apps.length}
+                {!isIncomplete ? distribution.apps.length : "-"}
               </Text>
             </div>
           </Info>
-          <StorageBar distribution={distribution} deviceModel={state.deviceModel} />
+          <StorageBar
+            distribution={distribution}
+            deviceModel={state.deviceModel}
+            isIncomplete={isIncomplete}
+          />
           <FreeInfo danger={shouldWarn}>
             {shouldWarn ? <IconTriangleWarning /> : ""}{" "}
             <Box paddingLeft={1}>
