@@ -16,7 +16,7 @@ import "~/renderer/live-common-setup";
 import "~/renderer/experimental";
 import "~/renderer/i18n/init";
 
-import logger from "~/logger";
+import logger, { enableDebugLogger } from "~/logger";
 import LoggerTransport from "~/logger/logger-transport-renderer";
 import { DEBUG_TICK_REDUX } from "~/config/constants";
 import { enableGlobalTab, disableGlobalTab, isGlobalTabEnabled } from "~/config/global-tab";
@@ -29,7 +29,7 @@ import createStore from "~/renderer/createStore";
 import events from "~/renderer/events";
 import { setAccounts } from "~/renderer/actions/accounts";
 import { fetchSettings } from "~/renderer/actions/settings";
-import { lock } from "~/renderer/actions/application";
+import { lock, setOSDarkMode } from "~/renderer/actions/application";
 
 import {
   languageSelector,
@@ -41,6 +41,10 @@ import ReactRoot from "~/renderer/ReactRoot";
 import AppError from "~/renderer/AppError";
 
 logger.add(new LoggerTransport());
+
+if (process.env.NODE_ENV !== "production" || process.env.DEV_TOOLS) {
+  enableDebugLogger();
+}
 
 const rootNode = document.getElementById("react-root");
 
@@ -93,6 +97,10 @@ async function init() {
 
   if (isMainWindow) {
     webFrame.setVisualZoomLevelLimits(1, 1);
+
+    const matcher = window.matchMedia("(prefers-color-scheme: dark)");
+    const updateOSTheme = () => store.dispatch(setOSDarkMode(matcher.matches));
+    matcher.addListener(updateOSTheme);
 
     events({ store });
 

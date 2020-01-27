@@ -17,7 +17,17 @@ const pinfo = format(info => {
 
 const transports = [];
 
-if (process.env.NODE_ENV !== "production" || process.env.DEV_TOOLS) {
+const logger = winston.createLogger({
+  level: "debug",
+  format: combine(pinfo(), timestamp(), json()),
+  transports,
+});
+
+const add = (transport: *) => {
+  logger.add(transport);
+};
+
+export function enableDebugLogger() {
   let consoleT;
   if (typeof window === "undefined") {
     // on Node we want a concise logger
@@ -59,18 +69,8 @@ if (process.env.NODE_ENV !== "production" || process.env.DEV_TOOLS) {
     }
     consoleT = new CustomConsole();
   }
-  transports.push(consoleT);
+  add(consoleT);
 }
-
-const logger = winston.createLogger({
-  level: "debug",
-  format: combine(pinfo(), timestamp(), json()),
-  transports,
-});
-
-const add = (transport: *) => {
-  logger.add(transport);
-};
 
 const captureBreadcrumb = (breadcrumb: any) => {
   // FIXME
@@ -116,32 +116,80 @@ const logAnalytics = !process.env.NO_DEBUG_ANALYTICS;
 const logApdu = !process.env.NO_DEBUG_DEVICE;
 const logCountervalues = !process.env.NO_DEBUG_COUNTERVALUES;
 
-const blacklistTooVerboseCommandInput = [
-  "CurrencyScanAccountsOnDevice",
-  "AccountStartSync",
-  "AccountPrepareTransaction",
-  "AccountGetTransactionStatus",
-  "AccountSignAndBroadcast",
-];
-const blacklistTooVerboseCommandResponse = ["AccountStartSync", "CurrencyScanAccountsOnDevice"];
+function summarizeAccount({
+  type,
+  balance,
+  id,
+  index,
+  freshAddress,
+  freshAddressPath,
+  name,
+  operations,
+  pendingOperations,
+  subAccounts,
+}: Object) {
+  const o: Object = {
+    type,
+    balance,
+    id,
+    name,
+    index,
+    freshAddress,
+    freshAddressPath,
+  };
+  if (operations && typeof operations === "object" && Array.isArray(operations)) {
+    o.opsL = operations.length;
+  }
+  if (
+    pendingOperations &&
+    typeof pendingOperations === "object" &&
+    Array.isArray(pendingOperations)
+  ) {
+    o.pendingOpsL = pendingOperations.length;
+  }
+  if (subAccounts && typeof subAccounts === "object" && Array.isArray(subAccounts)) {
+    o.subA = subAccounts.map(o => summarizeAccount(o));
+  }
+  return o;
+}
+
+// minize objects that gets logged to keep the essential
+export const summarize = (obj: mixed, key?: string): mixed => {
+  switch (typeof obj) {
+    case "object": {
+      if (!obj) return obj;
+      if (key === "appByName") return "(removed)";
+      if (key === "firmware") return "(removed)";
+      if (Array.isArray(obj)) {
+        return obj.map(o => summarize(o));
+      }
+      if (
+        obj.type === "Account" ||
+        // AccountRaw
+        ("seedIdentifier" in obj && "freshAddressPath" in obj && "operations" in obj)
+      ) {
+        return summarizeAccount(obj);
+      }
+      const copy = {};
+      for (const k in obj) {
+        copy[k] = summarize(obj[k], k);
+      }
+      return copy;
+    }
+    default:
+      return obj;
+  }
+};
 
 export default {
   onCmd: (type: string, id: string, spentTime: number, data?: any) => {
     if (logCmds) {
       switch (type) {
         case "cmd.START":
-          logger.log(
-            "info",
-            `CMD ${id}.send()`,
-            blacklistTooVerboseCommandInput.includes(id) ? { type } : { type, data },
-          );
+          logger.log("info", `CMD ${id}.send()`, summarize({ type, data }));
           break;
         case "cmd.NEXT":
-          logger.log(
-            "info",
-            `● CMD ${id}`,
-            blacklistTooVerboseCommandResponse.includes(id) ? { type } : { type, data },
-          );
+          logger.log("info", `● CMD ${id}`, summarize({ type, data }));
           break;
         case "cmd.COMPLETE":
           logger.log("info", `✔ CMD ${id} finished in ${spentTime.toFixed(0)}ms`, { type });
@@ -151,7 +199,7 @@ export default {
           });
           break;
         case "cmd.ERROR":
-          logger.log("warn", `✖ CMD ${id} error`, { type, data });
+          logger.log("warn", `✖ CMD ${id} error`, summarize({ type, data }));
           captureBreadcrumb({
             category: "command",
             message: `✖ ${id}`,

@@ -4,24 +4,17 @@ import styled from "styled-components";
 import { Trans } from "react-i18next";
 import Box from "~/renderer/components/Box";
 import Text from "~/renderer/components/Text";
+import ProgressBar from "~/renderer/components/Progress";
 import IconCrossCircle from "~/renderer/icons/CrossCircle";
 
 const Holder = styled.div`
-  min-width: 100px;
-  width: 100%;
+  width: 100px;
   height: 5px;
-  background: ${p => p.theme.colors.palette.text.shade20};
   position: relative;
   border-radius: 5px;
+  overflow: hidden;
 `;
-const Bar = styled.div`
-  position: absolute;
-  background: ${p => p.theme.colors.palette.primary.main};
-  height: 100%;
-  border-radius: 5px;
-  width: ${p => `${(p.value * 100).toFixed(2)}%`};
-  max-width: 100%;
-`;
+
 const Cancel = styled.div`
   align-items: center;
   justify-content: center;
@@ -33,7 +26,7 @@ const Cancel = styled.div`
 
 const Progress = ({ onClick, progress }: { onClick: () => void, progress: * }) => (
   <Box flex="1" horizontal justifyContent="flex-end" overflow="hidden">
-    <Box flex="0 0 auto" vertical alignItems="center" justifyContent="center">
+    <Box flex="0 0 auto" vertical alignItems="flex-end" justifyContent="center">
       <Box
         flex="0 0 auto"
         horizontal
@@ -60,7 +53,15 @@ const Progress = ({ onClick, progress }: { onClick: () => void, progress: * }) =
         ) : null}
       </Box>
       <Holder>
-        <Bar value={progress ? progress.progress : 0} />
+        {progress && progress.appOp ? (
+          progress.appOp.type === "install" ? (
+            <ProgressBar progress={progress ? progress.progress : 0} />
+          ) : (
+            <ProgressBar infinite timing={1200} />
+          )
+        ) : (
+          <ProgressBar infinite color="palette.text.shade20" timing={1200} />
+        )}
       </Holder>
     </Box>
   </Box>
