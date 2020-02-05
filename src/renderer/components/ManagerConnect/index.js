@@ -16,6 +16,7 @@ import BigSpinner from "~/renderer/components/BigSpinner";
 import AutoRepair from "~/renderer/components/AutoRepair";
 import Button from "~/renderer/components/Button";
 import ConnectTroubleshooting from "~/renderer/components/ConnectTroubleshooting";
+import NavigationGuard from "~/renderer/components/NavigationGuard";
 import Text from "~/renderer/components/Text";
 import useTheme from "~/renderer/hooks/useTheme";
 import { useManagerConnect } from "./logic";
@@ -102,6 +103,7 @@ type Props = OwnProps & {
 
 const AnimationWrapper = styled.div`
   width: 600px;
+  max-width: 100%;
   height: ${p => (p.modelId === "blue" ? "300px" : "200px")};
   align-self: center;
   display: flex;
@@ -115,6 +117,7 @@ const Wrapper = styled.div`
   flex: 1;
   align-items: center;
   justify-content: center;
+  max-width: 100%;
 `;
 
 const Title = styled(Text).attrs({
@@ -200,6 +203,8 @@ const ManagerConnect = ({
   if (allowManagerRequestedWording) {
     return (
       <Wrapper>
+        {/** Block navigation when allow Manager is triggered */}
+        <NavigationGuard when noModal />
         <Header />
         <AnimationWrapper modelId={modelId}>
           <Animation animation={getDeviceAnimation(modelId, type, "allowManager")} />
