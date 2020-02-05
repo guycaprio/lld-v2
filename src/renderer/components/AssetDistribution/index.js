@@ -84,12 +84,7 @@ class AssetDistribution extends PureComponent<Props, State> {
     return (
       <>
         <Box horizontal alignItems="center">
-          <Text
-            ff="Inter|Medium"
-            fontSize={6}
-            color="palette.text.shade100"
-            data-e2e="title_assetDistribution"
-          >
+          <Text ff="Inter|Medium" fontSize={6} color="palette.text.shade100">
             <Trans i18nKey="distribution.header" values={{ count: distribution.list.length }} />
           </Text>
         </Box>

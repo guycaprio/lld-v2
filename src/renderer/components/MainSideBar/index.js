@@ -161,7 +161,7 @@ const TagContainer = ({ collapsed }: { collapsed: boolean }) => {
         cursor: "pointer",
       }}
     >
-      <Tag to="/settings/experimental">
+      <Tag data-automation-id="drawer-experimental-button" to="/settings/experimental">
         <IconExperimental width={16} height={16} />
         <Hide visible={collapsed}>
           <TagText>{t("common.experimentalFeature")}</TagText>
@@ -237,7 +237,11 @@ const MainSideBar = () => {
         const secondAnim = !(state === "entered" && !collapsed);
         return (
           <SideBar className="unstoppableAnimation" style={sideBarTransitionStyles[state]}>
-            <Collapser collapsed={collapsed} onClick={handleCollapse}>
+            <Collapser
+              collapsed={collapsed}
+              onClick={handleCollapse}
+              data-automation-id="drawer-collapse-button"
+            >
               <IconChevron size={16} />
             </Collapser>
             <TopGradient />
