@@ -72,6 +72,7 @@ const Chart = ({ height, data, color, renderTickY, renderTooltip, valueKey = "va
   const chartRef = useRef(null);
   const theme = useTheme("colors.palette");
   const [tooltip, setTooltip] = useState();
+  const valueKeyRef = useRef(valueKey);
 
   const generatedData = useMemo(
     () => ({
@@ -97,12 +98,11 @@ const Chart = ({ height, data, color, renderTickY, renderTooltip, valueKey = "va
     [color, data, valueKey],
   );
 
-  const min = useMemo(() => Math.min(...generatedData.datasets[0].data.map(d => d.y)), [
-    generatedData,
-  ]);
-
   const generateOptions = useMemo(
     () => ({
+      animation: {
+        duration: 0,
+      },
       responsive: true,
       maintainAspectRatio: false,
       tooltips: {
@@ -147,7 +147,7 @@ const Chart = ({ height, data, color, renderTickY, renderTooltip, valueKey = "va
               zeroLineColor: theme.text.shade10,
             },
             ticks: {
-              min: min * 0.8,
+              beginAtZero: true,
               maxTicksLimit: 4,
               fontColor: theme.text.shade60,
               fontFamily: "Inter",
@@ -158,14 +158,20 @@ const Chart = ({ height, data, color, renderTickY, renderTooltip, valueKey = "va
         ],
       },
     }),
-    [min, renderTickY, theme],
+    [renderTickY, theme],
   );
 
   useLayoutEffect(() => {
     if (chartRef.current) {
-      chartRef.current.data = generatedData;
+      let shouldAnimate = false;
+      if (valueKeyRef.current !== valueKey) {
+        valueKeyRef.current = valueKey;
+        shouldAnimate = true;
+      }
+
+      chartRef.current.data.datasets[0].data = generatedData.datasets[0].data;
       chartRef.current.options = generateOptions;
-      chartRef.current.update(0);
+      chartRef.current.update(shouldAnimate ? 500 : 0);
     } else {
       chartRef.current = new ChartJs(canvasRef.current, {
         type: "line",
@@ -173,7 +179,7 @@ const Chart = ({ height, data, color, renderTickY, renderTooltip, valueKey = "va
         options: generateOptions,
       });
     }
-  }, [generateOptions, generatedData]);
+  }, [generateOptions, generatedData, valueKey]);
 
   return (
     <ChartContainer height={height}>
