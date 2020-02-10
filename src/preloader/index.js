@@ -36,10 +36,9 @@ const init = async () => {
   const settings = await ipcRenderer.invoke("getKey", {
     ns: "app",
     keyPath: "settings",
-    defaultValue: {},
   });
 
-  window.settings = settings;
+  window.settings = settings || {};
 
   const osTheme = window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
   const palette = palettes[settings.theme || osTheme];
