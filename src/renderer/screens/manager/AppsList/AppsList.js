@@ -1,13 +1,16 @@
 // @flow
 import React, { useState, memo, useCallback, useEffect, useRef } from "react";
-import { useLocation } from "react-router-dom";
+import { useLocation, useHistory } from "react-router-dom";
+import { useDispatch } from "react-redux";
 import styled from "styled-components";
 import { Trans } from "react-i18next";
-
 import type { TFunction } from "react-i18next";
 import type { DeviceInfo } from "@ledgerhq/live-common/lib/types/manager";
 import type { State, Action, AppOp, AppsDistribution } from "@ledgerhq/live-common/lib/apps/types";
 import { useSortedFilteredApps } from "@ledgerhq/live-common/lib/apps/filtering";
+
+import { openModal } from "~/renderer/actions/modals";
+
 import Placeholder from "./Placeholder";
 import Card from "~/renderer/components/Box/Card";
 import Box from "~/renderer/components/Box";
@@ -44,8 +47,9 @@ const FilterHeader = styled.div`
   padding: 10px 20px;
   margin: 0px;
   align-items: center;
-  border-bottom: 1px solid ${p => p.theme.colors.palette.text.shade10};
   background-color: ${p => p.theme.colors.palette.background.paper};
+  box-shadow: 0 1px 0 0 ${p => p.theme.colors.palette.text.shade10};
+  border-radius: 4px 4px 0 0;
   position: sticky;
   top: ${p => (p.isIncomplete ? -p.theme.space[3] : p.theme.sizes.topBarHeight)}px;
   left: 0;
@@ -76,7 +80,10 @@ const AppsList = ({
   t,
   distribution,
 }: Props) => {
+  const { push } = useHistory();
   const { search } = useLocation();
+  const reduxDispatch = useDispatch();
+
   const inputRef = useRef();
   const [query, setQuery] = useState("");
   const [filters, setFilters] = useState(["all"]);
@@ -100,6 +107,14 @@ const AppsList = ({
       setQuery(q);
     }
   }, [search]);
+
+  const addAccount = useCallback(
+    currency => {
+      push("/accounts");
+      reduxDispatch(openModal("MODAL_ADD_ACCOUNTS", { currency: currency || null }));
+    },
+    [push, reduxDispatch],
+  );
 
   const { apps, installed: installedApps, uninstallQueue, installQueue } = state;
 
@@ -145,9 +160,10 @@ const AppsList = ({
         progress={get(progress, ["appOp", "name"]) === app.name ? progress : undefined}
         setAppInstallDep={setAppInstallDep}
         setAppUninstallDep={setAppUninstallDep}
+        addAccount={addAccount}
       />
     ),
-    [state, dispatch, isIncomplete, progress, setAppInstallDep, setAppUninstallDep],
+    [state, dispatch, isIncomplete, progress, setAppInstallDep, setAppUninstallDep, addAccount],
   );
 
   return (
@@ -160,50 +176,51 @@ const AppsList = ({
           />
         </StickyTabBar>
       )}
-
-      {onDeviceTab && !installedApps.length ? (
-        <Box py={8}>
-          <Text textAlign="center" ff="Inter|SemiBold" fontSize={6}>
-            <Trans i18nKey="manager.applist.placeholderNoAppsInstalled" />
-          </Text>
-          <Text textAlign="center" fontSize={4}>
-            <Trans i18nKey="manager.applist.placeholderGoToCatalog" />
-          </Text>
-        </Box>
-      ) : (
-        <Card mt={0}>
-          <FilterHeader isIncomplete={isIncomplete}>
-            <Input
-              containerProps={{ noBorder: true, noBoxShadow: true, flex: 1 }}
-              renderLeft={<IconSearch size={16} />}
-              onChange={debounce(setQuery, 100)}
-              placeholder={t(
-                !onDeviceTab ? "manager.tabs.appCatalogSearch" : "manager.tabs.appOnDeviceSearch",
-              )}
-              ref={inputRef}
-            />
-            {!onDeviceTab ? (
-              <>
-                <Filter onFiltersChange={debounce(setFilters, 100)} filters={filters} />
-                <Box ml={3}>
-                  <Sort onSortChange={debounce(setSort, 100)} sort={sort} />
-                </Box>
-              </>
-            ) : (
-              <UninstallAllButton
-                installedApps={installedApps}
-                uninstallQueue={uninstallQueue}
-                dispatch={dispatch}
+      <Card mt={0}>
+        {onDeviceTab && !installedApps.length ? (
+          <Box py={8}>
+            <Text textAlign="center" ff="Inter|SemiBold" fontSize={6}>
+              <Trans i18nKey="manager.applist.placeholderNoAppsInstalled" />
+            </Text>
+            <Text textAlign="center" fontSize={4}>
+              <Trans i18nKey="manager.applist.placeholderGoToCatalog" />
+            </Text>
+          </Box>
+        ) : (
+          <>
+            <FilterHeader isIncomplete={isIncomplete}>
+              <Input
+                containerProps={{ noBorder: true, noBoxShadow: true, flex: 1 }}
+                renderLeft={<IconSearch size={16} />}
+                onChange={debounce(setQuery, 100)}
+                placeholder={t(
+                  !onDeviceTab ? "manager.tabs.appCatalogSearch" : "manager.tabs.appOnDeviceSearch",
+                )}
+                ref={inputRef}
               />
+              {!onDeviceTab ? (
+                <>
+                  <Filter onFiltersChange={debounce(setFilters, 100)} filters={filters} />
+                  <Box ml={3}>
+                    <Sort onSortChange={debounce(setSort, 100)} sort={sort} />
+                  </Box>
+                </>
+              ) : (
+                <UninstallAllButton
+                  installedApps={installedApps}
+                  uninstallQueue={uninstallQueue}
+                  dispatch={dispatch}
+                />
+              )}
+            </FilterHeader>
+            {displayedAppList.length ? (
+              displayedAppList.map(app => mapApp(app, !onDeviceTab))
+            ) : (
+              <Placeholder />
             )}
-          </FilterHeader>
-          {displayedAppList.length ? (
-            displayedAppList.map(app => mapApp(app, !onDeviceTab))
-          ) : (
-            <Placeholder />
-          )}
-        </Card>
-      )}
+          </>
+        )}
+      </Card>
     </>
   );
 };

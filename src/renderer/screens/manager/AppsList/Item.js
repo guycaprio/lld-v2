@@ -1,5 +1,5 @@
 // @flow
-import React, { useMemo, memo } from "react";
+import React, { useMemo, memo, useCallback } from "react";
 import {
   isOutOfMemoryState,
   predictOptimisticState,
@@ -29,7 +29,6 @@ const AppRow = styled.div`
   border-top: 1px solid ${p => p.theme.colors.palette.text.shade10};
   padding: 20px;
   font-size: 12px;
-  animation: ${p => p.theme.animations.fadeIn};
 `;
 
 const AppName = styled.div`
@@ -43,7 +42,7 @@ const AppName = styled.div`
 const AppSize = styled.div`
   flex: 0.5;
   text-align: center;
-  color: ${p => p.theme.colors.palette.text.shade40};
+  color: ${p => p.theme.colors.palette.text.shade60};
 `;
 
 const LiveCompatible = styled.div`
@@ -72,6 +71,7 @@ type Props = {
   progress: ?{ appOp: AppOp, progress: number },
   setAppInstallDep?: App => void,
   setAppUninstallDep?: App => void,
+  addAccount?: (*) => void,
 };
 
 // eslint-disable-next-line react/display-name
@@ -87,17 +87,25 @@ const Item: React$ComponentType<Props> = ({
   progress,
   setAppInstallDep,
   setAppUninstallDep,
+  addAccount,
 }: Props) => {
   const { name } = app;
   const { deviceModel } = state;
+
+  const currency = useMemo(() => app.currencyId && getCryptoCurrencyById(app.currencyId), [
+    app.currencyId,
+  ]);
 
   const notEnoughMemoryToInstall = useMemo(
     () => isOutOfMemoryState(predictOptimisticState(reducer(state, { type: "install", name }))),
     [name, state],
   );
 
-  const isLiveSupported =
-    app.currencyId && isCurrencySupported(getCryptoCurrencyById(app.currencyId));
+  const isLiveSupported = !!currency && isCurrencySupported(currency);
+
+  const onAddAccount = useCallback(() => {
+    if (addAccount) addAccount(currency);
+  }, [addAccount, currency]);
 
   return (
     <AppRow>
@@ -105,9 +113,9 @@ const Item: React$ComponentType<Props> = ({
         <img alt="" src={manager.getIconUrl(app.icon)} width={40} height={40} />
         <AppName>
           <Text ff="Inter|Bold" color="palette.text.shade100" fontSize={3}>{`${app.name}${
-            app.currencyId ? ` (${getCryptoCurrencyById(app.currencyId).ticker})` : ""
+            currency ? ` (${currency.ticker})` : ""
           }`}</Text>
-          <Text ff="Inter|Regular" color="palette.text.shade50" fontSize={3}>
+          <Text ff="Inter|Regular" color="palette.text.shade60" fontSize={3}>
             <Trans
               i18nKey={
                 installed && !installed.updated
@@ -147,6 +155,8 @@ const Item: React$ComponentType<Props> = ({
         progress={progress}
         setAppInstallDep={setAppInstallDep}
         setAppUninstallDep={setAppUninstallDep}
+        isLiveSupported={isLiveSupported}
+        addAccount={onAddAccount}
       />
     </AppRow>
   );

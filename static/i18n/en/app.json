@@ -460,7 +460,9 @@
         "installed": "Installed",
         "uninstall": "Uninstall",
         "notEnoughSpace": "Not enough space",
-        "supported": "Supported"
+        "supported": "Supported",
+        "addAccount": "Add account",
+        "addAccountWarn": "Please wait for the app updates to finish"
       },
       "uninstall": {
         "title": "Uninstall all",
@@ -475,7 +477,7 @@
       "install": "Install",
       "dependencyInstall": {
         "title": "{{dependency}} app is required",
-        "description": "The {{app}} app will also be installed because the {{dependency}} app needs it.",
+        "description": "The {{dependency}} app will also be installed because the {{app}} app needs it.",
         "confirm": "Install apps"
       },
       "dependencyUninstall": {
